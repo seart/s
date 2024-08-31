@@ -394,7 +394,7 @@ public class SentinelApiClient {
         return fetchItems(ip, port, GET_RULES_PATH, type, ruleType);
     }
     
-    private boolean setRules(String app, String ip, int port, String type, List<? extends RuleEntity> entities) {
+    public boolean setRules(String app, String ip, int port, String type, List<? extends RuleEntity> entities) {
         if (entities == null) {
             return true;
         }
@@ -858,4 +858,104 @@ public class SentinelApiClient {
             return false;
         }
     }
+
+
+    /**
+     * @Author no one
+     * @Description     param flow rule
+     * @Date 2024-08-31 18:42
+     * @param: app
+     * @param: ip
+     * @param: port
+     * @param: rules
+     * @return: void
+     */
+    public  void customSetParamFlowRuleOfMachine(String app, String ip, int port, List<ParamFlowRuleEntity> rules){
+        if (rules == null) {
+            throw new IllegalArgumentException("rules is null");
+        }
+        if (StringUtil.isBlank(ip) || port <= 0) {
+            throw new IllegalArgumentException("ip or port is error");
+        }
+        try {
+            String data = JSON.toJSONString(
+                    rules.stream().map(ParamFlowRuleEntity::getRule).collect(Collectors.toList())
+            );
+            Map<String, String> params = new HashMap<>();
+            params.put("data", data);
+             executeCommand(app, ip, port, SET_PARAM_RULE_PATH, params, true)
+                    .thenCompose(e -> {
+                        if (CommandConstants.MSG_SUCCESS.equals(e)) {
+                            return CompletableFuture.completedFuture(null);
+                        } else {
+                            logger.error("customSetParamFlowRuleOfMachine Push parameter flow rules to client failed:{} ", e);
+                            return AsyncUtils.newFailedFuture(new RuntimeException(e));
+                        }
+                    });
+        } catch (Exception e) {
+            logger.error("customSetParamFlowRuleOfMachine Error when setting parameter flow rule", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * @Author no one
+     * @Description     gateway apis
+     * @Date 2024-08-31 18:36
+     * @param: app
+     * @param: ip
+     * @param: port
+     * @param: apis
+     * @return: void
+     */
+    public void customModifyApis(String app, String ip, int port, List<ApiDefinitionEntity> apis) {
+        if (apis == null) {
+            return;
+        }
+        try {
+            AssertUtil.notEmpty(app, "Bad app name");
+            AssertUtil.notEmpty(ip, "Bad machine IP");
+            AssertUtil.isTrue(port > 0, "Bad machine port");
+            String data = JSON.toJSONString(
+                    apis.stream().map(ApiDefinitionEntity::toApiDefinition).collect(Collectors.toList()));
+            Map<String, String> params = new HashMap<>(2);
+            params.put("data", data);
+            String result = executeCommand(app, ip, port, MODIFY_GATEWAY_API_PATH, params, true).get();
+            logger.info("customModifyApis Modify gateway apis result: {}", result);
+        } catch (Exception e) {
+            logger.error("customModifyApis Error when modifying gateway apis", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * @Author no one
+     * @Description     gateway flow Rules
+     * @Date 2024-08-31 18:37
+     * @param: app
+     * @param: ip
+     * @param: port
+     * @param: rules
+     * @return: void
+     */
+    public void customModifyGatewayFlowRules(String app, String ip, int port, List<GatewayFlowRuleEntity> rules) {
+        if (rules == null) {
+            return;
+        }
+        try {
+            AssertUtil.notEmpty(app, "Bad app name");
+            AssertUtil.notEmpty(ip, "Bad machine IP");
+            AssertUtil.isTrue(port > 0, "Bad machine port");
+            String data = JSON.toJSONString(
+                    rules.stream().map(GatewayFlowRuleEntity::toGatewayFlowRule).collect(Collectors.toList()));
+            Map<String, String> params = new HashMap<>(2);
+            params.put("data", data);
+            String result = executeCommand(app, ip, port, MODIFY_GATEWAY_FLOW_RULE_PATH, params, true).get();
+            logger.info("customModifyGatewayFlowRules Modify gateway flow rules: {}", result);
+        } catch (Exception e) {
+            logger.error("customModifyGatewayFlowRules Error when modifying gateway apis", e);
+            throw new RuntimeException(e);
+        }
+    }
+
 }

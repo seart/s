@@ -15,16 +15,23 @@
  */
 package com.alibaba.csp.sentinel.dashboard.discovery;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import com.alibaba.csp.sentinel.dashboard.client.SentinelApiClient;
+import com.alibaba.csp.sentinel.dashboard.rule.nacos.Constant;
+import com.alibaba.csp.sentinel.dashboard.rule.nacos.DynamicRuleStore;
+import com.alibaba.csp.sentinel.dashboard.rule.nacos.DynamicRuleStoreFactory;
+import com.alibaba.csp.sentinel.dashboard.rule.nacos.RuleType;
+import com.alibaba.csp.sentinel.util.AssertUtil;
+import com.google.common.collect.Maps;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import com.alibaba.csp.sentinel.util.AssertUtil;
-
-import org.springframework.stereotype.Component;
 
 /**
  * @author leyou
@@ -32,13 +39,77 @@ import org.springframework.stereotype.Component;
 @Component
 public class SimpleMachineDiscovery implements MachineDiscovery {
 
+    private final org.slf4j.Logger logger = LoggerFactory.getLogger(SimpleMachineDiscovery.class);
+
+    @Autowired
+    private SentinelApiClient sentinelApiClient;
+
+    @Autowired
+    private DynamicRuleStoreFactory factory;
+
+
     private final ConcurrentMap<String, AppInfo> apps = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Integer> customPullData = new ConcurrentHashMap<>();
+
+    private synchronized void initData(MachineInfo machineInfo) {
+        String app = machineInfo.getApp();
+        String ip = machineInfo.getIp();
+        Integer port = machineInfo.getPort();
+        String key = String.format("%s-%s-%s", app, ip, port);
+        Integer exists = customPullData.get(key);
+        if (Objects.isNull(exists)) {
+            logger.info("app :{} first into ip :{}, port:{}", app,ip,port);
+            // 新的应用接入，需要进行初始化
+            customPullData.putIfAbsent(key, 1);
+            Map<String, String> paramMap = Maps.newHashMap();
+            paramMap.put("app", app);
+            paramMap.put("ip", ip);
+            paramMap.put("port", String.valueOf(port));
+
+            // 如果属性不存在，则返回默认值
+            String appTypeWithDefault = System.getProperty("csp.sentinel.app.type", "0");
+            logger.info("sentinel app type:{}", appTypeWithDefault);
+            Arrays.stream(RuleType.values())
+                    .forEach(x -> {
+                        DynamicRuleStore<?> dynamicRuleStore = factory.getDynamicRuleStoreByType(x);
+                        List rules;
+                        boolean gatewaySign = StringUtils.equalsIgnoreCase(appTypeWithDefault, "1");
+                        try {
+                            rules = dynamicRuleStore.getRules(app);
+                        } catch (Exception e) {
+                            logger.error("get nacos rules error ", e);
+                            throw new RuntimeException(e);
+                        }
+                        if (CollectionUtils.isEmpty(rules)) {
+                            return;
+                        }
+                        boolean result = StringUtils.equalsIgnoreCase(x.getName(), Constant.FLOW) || StringUtils.equalsIgnoreCase(x.getName(), Constant.DEGRADE) ||
+                                StringUtils.equalsIgnoreCase(x.getName(), Constant.AUTHORITY) || StringUtils.equalsIgnoreCase(x.getName(), Constant.SYSTEM);
+                        if (result) {
+                            sentinelApiClient.setRules(app, ip, port, x.getName(), rules);
+                        } else if (StringUtils.equalsIgnoreCase(Constant.PARAM_FLOW, x.getName())) {
+                            sentinelApiClient.customSetParamFlowRuleOfMachine(app, ip, port, rules);
+                        } else if (StringUtils.equalsIgnoreCase(Constant.GW_FLOW, x.getName()) && gatewaySign) {
+                            sentinelApiClient.customModifyGatewayFlowRules(app, ip, port, rules);
+                        } else if (StringUtils.equalsIgnoreCase(Constant.GW_API_GROUP, x.getName()) && gatewaySign) {
+                            sentinelApiClient.customModifyApis(app, ip, port, rules);
+                        }
+                    });
+        }
+    }
+
+    public synchronized void customeRemoveMachine(String app, String ip, int port){
+        String key = String.format("%s-%s-%s", app, ip, port);
+        customPullData.remove(key);
+    }
+
 
     @Override
     public long addMachine(MachineInfo machineInfo) {
         AssertUtil.notNull(machineInfo, "machineInfo cannot be null");
         AppInfo appInfo = apps.computeIfAbsent(machineInfo.getApp(), o -> new AppInfo(machineInfo.getApp(), machineInfo.getAppType()));
         appInfo.addMachine(machineInfo);
+        initData(machineInfo);
         return 1;
     }
 
@@ -47,6 +118,7 @@ public class SimpleMachineDiscovery implements MachineDiscovery {
         AssertUtil.assertNotBlank(app, "app name cannot be blank");
         AppInfo appInfo = apps.get(app);
         if (appInfo != null) {
+            customeRemoveMachine(app, ip,port);
             return appInfo.removeMachine(ip, port);
         }
         return false;

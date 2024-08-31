@@ -42,6 +42,7 @@ import com.alibaba.csp.sentinel.dashboard.datasource.entity.MetricEntity;
 import com.alibaba.csp.sentinel.dashboard.discovery.AppInfo;
 import com.alibaba.csp.sentinel.dashboard.discovery.AppManagement;
 import com.alibaba.csp.sentinel.dashboard.discovery.MachineInfo;
+import com.alibaba.csp.sentinel.dashboard.discovery.SimpleMachineDiscovery;
 import com.alibaba.csp.sentinel.node.metric.MetricNode;
 import com.alibaba.csp.sentinel.util.StringUtil;
 
@@ -86,6 +87,9 @@ public class MetricFetcher {
     private AppManagement appManagement;
 
     private CloseableHttpAsyncClient httpclient;
+
+    @Autowired
+    private SimpleMachineDiscovery simpleMachineDiscovery;
 
     @SuppressWarnings("PMD.ThreadPoolCreationRule")
     private ScheduledExecutorService fetchScheduleService = Executors.newScheduledThreadPool(1,
@@ -199,6 +203,7 @@ public class MetricFetcher {
             if (machine.isDead()) {
                 latch.countDown();
                 appManagement.getDetailApp(app).removeMachine(machine.getIp(), machine.getPort());
+                simpleMachineDiscovery.customeRemoveMachine(app,machine.getIp(), machine.getPort());
                 logger.info("Dead machine removed: {}:{} of {}", machine.getIp(), machine.getPort(), app);
                 continue;
             }
