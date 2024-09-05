@@ -46,6 +46,8 @@ public class NacosConfig {
         properties.setProperty("namespace", nacosPropertiesInject.getNamespace());
         properties.setProperty("group", nacosPropertiesInject.getGroup());
         properties.setProperty("timeout", nacosPropertiesInject.getTimeout().toString());
+        properties.setProperty("username", nacosPropertiesInject.getUsername());
+        properties.setProperty("password", nacosPropertiesInject.getPassword());
         return ConfigFactory.createConfigService(properties);
     }
 

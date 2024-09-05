@@ -18,6 +18,9 @@ public class NacosPropertiesInject {
 
     private Long timeout;
 
+    private String username;
+    private String password;
+
     public Long getTimeout() {
         return timeout;
     }
@@ -49,5 +52,21 @@ public class NacosPropertiesInject {
 
     public void setNamespace(String namespace) {
         this.namespace = namespace;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
