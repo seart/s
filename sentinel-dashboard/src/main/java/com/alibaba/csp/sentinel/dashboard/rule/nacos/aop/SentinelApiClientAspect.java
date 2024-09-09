@@ -16,7 +16,6 @@
 
 package com.alibaba.csp.sentinel.dashboard.rule.nacos.aop;
 
-import com.alibaba.csp.sentinel.concurrent.NamedThreadFactory;
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.RuleEntity;
 import com.alibaba.csp.sentinel.dashboard.rule.nacos.Constant;
 import com.alibaba.csp.sentinel.dashboard.rule.nacos.DynamicRuleStore;
@@ -34,8 +33,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Resource;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * @Author no one
@@ -48,10 +45,6 @@ public class SentinelApiClientAspect {
 
     private static final Logger LOG = LoggerFactory.getLogger(SentinelApiClientAspect.class);
 
-    @SuppressWarnings("PMD.ThreadPoolCreationRule")
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(
-            new NamedThreadFactory("sentinel-dashboard-aspect"));
-
     @Resource
     private DynamicRuleStoreFactory factory;
 
@@ -60,8 +53,6 @@ public class SentinelApiClientAspect {
         // 直接从nacos 拉去数据
         Object[] args = pjp.getArgs();
         String app = (String) args[0];
-        String ip = (String) args[1];
-        Integer port = (Integer) args[2];
         List rules = dynamicRuleStore.getRules(app);
         LOG.info("rules----------------------:{}", rules);
         if (CollectionUtils.isEmpty(rules)) {

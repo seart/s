@@ -23,7 +23,6 @@ import com.alibaba.csp.sentinel.datasource.Converter;
 import com.alibaba.csp.sentinel.util.AssertUtil;
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.fastjson.JSON;
-import com.alibaba.nacos.api.config.ConfigService;
 import com.alibaba.nacos.api.config.ConfigType;
 import com.alibaba.nacos.api.exception.NacosException;
 import org.slf4j.Logger;
@@ -41,31 +40,31 @@ public class DynamicRuleNacosStore<T extends RuleEntity> extends DynamicRuleStor
     private static final Logger LOG = LoggerFactory.getLogger(SentinelApiClientAspect.class);
 
 
-    private final ConfigService configService;
+    private final NacosConfig nacosConfig;
     private final NacosPropertiesInject nacosPropertiesInject;
 
     public DynamicRuleNacosStore(final RuleType ruleType,
-                                 final ConfigService configService,
+                                 final NacosConfig nacosConfig,
                                  final NacosPropertiesInject nacosProperties) {
         super.ruleType = ruleType;
-        this.configService = configService;
+        this.nacosConfig = nacosConfig;
         nacosPropertiesInject = nacosProperties;
     }
 
-    /*
+    /**
      * @Author no one
-     * @Description     获取Naocs上面的 sentinel 规则,并且增加监听
+     * @Description 获取Naocs上面的 sentinel 规则,并且增加监听
      * @Date 2024-08-02 09:13
      * @param: appName
      * @return: java.util.List<T>
      **/
     @Override
-    public List<T> getRules(final String appName)  {
+    public List<T> getRules(final String appName) {
         String dataId = appName + NacosConfigUtil.PrefixType.getPrefix(ruleType);
         LOG.info("dataId:{}", dataId);
         String rules = null;
         try {
-            rules = configService.getConfig(dataId,
+            rules = nacosConfig.get().getConfig(dataId,
                     nacosPropertiesInject.getGroup(),
                     nacosPropertiesInject.getTimeout());
         } catch (NacosException e) {
@@ -81,9 +80,9 @@ public class DynamicRuleNacosStore<T extends RuleEntity> extends DynamicRuleStor
         return rulesList;
     }
 
-    /*
+    /**
      * @Author no one
-     * @Description     推送 sentinel 规则到Nacos上
+     * @Description 推送 sentinel 规则到Nacos上
      * @Date 2024-08-02 09:13
      * @param: app
      * @param: rules
@@ -96,7 +95,7 @@ public class DynamicRuleNacosStore<T extends RuleEntity> extends DynamicRuleStor
             return;
         }
         String dataId = app + NacosConfigUtil.PrefixType.getPrefix(ruleType);
-        Boolean result = configService.publishConfig(dataId,
+        Boolean result = nacosConfig.get().publishConfig(dataId,
                 nacosPropertiesInject.getGroup(),
                 RuleConfigUtil.getEncoder().convert(rules),
                 ConfigType.JSON.getType()

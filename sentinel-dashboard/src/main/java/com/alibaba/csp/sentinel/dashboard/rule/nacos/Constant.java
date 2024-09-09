@@ -9,4 +9,10 @@ public interface Constant {
     String AUTHORITY = "authority";
     String GW_FLOW = "gw-flow";
     String GW_API_GROUP = "gw-api-group";
+
+    interface DatasourceSign {
+        Integer initSign = 0;
+        Integer defaultSign = 1;
+        Integer nacosSign = 2;
+    }
 }

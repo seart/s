@@ -24,11 +24,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/*
+/**
  * @Author no one
- * @Description     工厂类通过 RuleType ->  DynamicRuleStore的具体实现
+ * @Description 工厂类通过 RuleType ->  DynamicRuleStore的具体实现
  * @Date 2024-08-02
- **/
+ */
 @Component
 public class DynamicRuleStoreFactory {
 

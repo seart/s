@@ -15,59 +15,43 @@
  */
 package com.alibaba.csp.sentinel.dashboard.rule.nacos;
 
-import com.alibaba.csp.sentinel.dashboard.config.rule.NacosPropertiesInject;
-import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
-import com.alibaba.csp.sentinel.datasource.Converter;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.nacos.api.config.ConfigFactory;
 import com.alibaba.nacos.api.config.ConfigService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
-import java.util.List;
 import java.util.Properties;
 
 /**
- * @Author  no one
- * @Description     获取ConfigServer 类
+ * @Author no one
+ * @Description 获取ConfigServer 类
  * @Date 2024-08-02 09:25
  */
-@Configuration
+
 public class NacosConfig {
 
-    @Autowired
-    private NacosPropertiesInject nacosPropertiesInject;
+    private ConfigService nacosClient;
 
-    @Bean(name = "nacosConfigSev")
-    public ConfigService nacosConfigService() throws Exception {
+    public NacosConfig(String serverAddr, String namespace, String group, Long timeout, String username, String password) throws Exception {
+        initNacosConfig(serverAddr, namespace, group, timeout, username, password);
+    }
+
+    private void initNacosConfig(String serverAddr,
+                                 String namespace,
+                                 String group,
+                                 Long timeout,
+                                 String username,
+                                 String password
+    ) throws Exception {
         Properties properties = new Properties();
-        properties.setProperty("serverAddr", nacosPropertiesInject.getServerAddr());
-        properties.setProperty("namespace", nacosPropertiesInject.getNamespace());
-        properties.setProperty("group", nacosPropertiesInject.getGroup());
-        properties.setProperty("timeout", nacosPropertiesInject.getTimeout().toString());
-        properties.setProperty("username", nacosPropertiesInject.getUsername());
-        properties.setProperty("password", nacosPropertiesInject.getPassword());
-        return ConfigFactory.createConfigService(properties);
+        properties.setProperty("serverAddr", serverAddr);
+        properties.setProperty("namespace", namespace);
+        properties.setProperty("group", group);
+        properties.setProperty("timeout", String.valueOf(timeout));
+        properties.setProperty("username", username);
+        properties.setProperty("password", password);
+        nacosClient = ConfigFactory.createConfigService(properties);
     }
 
-    /*
-     * @Author no one
-     * @Description     下面2个方法，只在 test 里面引用到，不用管
-     * @Date 2024-08-02 09:21 
-     * @param: 
-     * @return: com.alibaba.csp.sentinel.datasource.Converter<java.util.List<com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity>,java.lang.String>
-     **/
-    @Bean
-    public Converter<List<FlowRuleEntity>, String> flowRuleEntityEncoder() {
-        return JSON::toJSONString;
+    public ConfigService get() {
+        return nacosClient;
     }
-
-    @Bean
-    public Converter<String, List<FlowRuleEntity>> flowRuleEntityDecoder() {
-        return s -> JSON.parseArray(s, FlowRuleEntity.class);
-    }
-
-  
-
 }
